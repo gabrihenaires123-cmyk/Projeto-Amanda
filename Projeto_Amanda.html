@@ -538,6 +538,12 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Mantém a sessão do usuário salva no dispositivo/navegador.
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .catch((error) => {
+    console.error('Erro ao configurar persistência da sessão:', error);
+  });
+
 /* ============ HELPERS DE DATA ============ */
 function todayISO(){
   const d = new Date();
@@ -560,7 +566,7 @@ function weekdayLetter(iso){
 
 /* ============ ESTADO ============ */
 let history = {}; // { 'YYYY-MM-DD': count }
-const today = todayISO();
+let today = todayISO();
 let current = 0;
 let currentUser = null;
 let isSignUpMode = false;
@@ -711,6 +717,29 @@ async function persist(){
     return false;
   }
 }
+
+/* ============ ATUALIZAÇÃO AUTOMÁTICA DA DATA ============ */
+function checkDateChange(){
+  const newToday = todayISO();
+
+  if(newToday !== today){
+    today = newToday;
+    current = history[today] || 0;
+    todayLabel.textContent = fmtLong(today);
+    render();
+  }
+}
+
+// Verifica a virada do dia mesmo se o app permanecer aberto.
+setInterval(checkDateChange, 1000);
+
+// No iPhone/Safari, o app pode ser suspenso em segundo plano.
+// Ao voltar para a tela, verificamos novamente a data.
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden){
+    checkDateChange();
+  }
+});
 
 /* ============ RENDER ============ */
 function render(){
