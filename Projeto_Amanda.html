@@ -529,7 +529,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 // Garante que o login fique salvo no dispositivo (não pede login de novo)
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .catch((e) => console.error('Erro ao configurar persistência do login:', e));
 
 /* ============ HELPERS DE DATA ============ */
 function todayISO(){
@@ -557,6 +558,7 @@ let today = todayISO();
 let current = 0;
 let currentUser = null;
 let isSignUpMode = false;
+let authResolved = false;
 
 /* ============ ELEMENTOS ============ */
 const loadingScreen = document.getElementById('loading-screen');
@@ -662,6 +664,7 @@ btnLogout.addEventListener('click', () => {
 });
 
 auth.onAuthStateChanged(async (user) => {
+  authResolved = true;
   if(user){
     currentUser = user;
     await loadHistory();
@@ -817,6 +820,10 @@ sheetOverlay.addEventListener('click', (e) => {
 /* ============ INÍCIO ============ */
 updateAuthModeUI();
 showScreen('loading');
+// Segurança: se em 4s o Firebase não respondeu, mostra o login de qualquer jeito
+setTimeout(() => {
+  if(!authResolved) showScreen('auth');
+}, 4000);
 </script>
 
 </body>
