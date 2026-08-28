@@ -47,6 +47,7 @@
     font-weight: 700;
     text-align:center;
     margin-bottom: 4px;
+    align-self: center !important;
   }
 
   h1{
@@ -406,10 +407,12 @@
   }
 
   .top-bar{
-    display:flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex;
+    justify-content: flex-start;
     margin-bottom: 6px;
+    align-content: flex-end;
+    flex-direction: column-reverse;
+    align-items: flex-end;
   }
   .logout-btn{
     background: none;
@@ -494,7 +497,6 @@
       </div>
 
       <button class="save-btn" id="btn-save">Salvar no histórico</button>
-      <div class="toast" id="toast">Salvo ✓</div>
     </div>
 
     <div class="history">
@@ -538,12 +540,6 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Mantém a sessão do usuário salva no dispositivo/navegador.
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-  .catch((error) => {
-    console.error('Erro ao configurar persistência da sessão:', error);
-  });
-
 /* ============ HELPERS DE DATA ============ */
 function todayISO(){
   const d = new Date();
@@ -566,7 +562,7 @@ function weekdayLetter(iso){
 
 /* ============ ESTADO ============ */
 let history = {}; // { 'YYYY-MM-DD': count }
-let today = todayISO();
+const today = todayISO();
 let current = 0;
 let currentUser = null;
 let isSignUpMode = false;
@@ -660,7 +656,15 @@ authSubmit.addEventListener('click', async () => {
     if(isSignUpMode){
       await auth.createUserWithEmailAndPassword(email, password);
     } else {
-      await auth.signInWithEmailAndPassword(email, password);
+      firebase.initializeApp(firebaseConfig);
+
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch((error) => {
+          console.error('Erro ao configurar persistência:', error);
+        });
     }
     // onAuthStateChanged cuida do resto
   }catch(e){
@@ -717,29 +721,6 @@ async function persist(){
     return false;
   }
 }
-
-/* ============ ATUALIZAÇÃO AUTOMÁTICA DA DATA ============ */
-function checkDateChange(){
-  const newToday = todayISO();
-
-  if(newToday !== today){
-    today = newToday;
-    current = history[today] || 0;
-    todayLabel.textContent = fmtLong(today);
-    render();
-  }
-}
-
-// Verifica a virada do dia mesmo se o app permanecer aberto.
-setInterval(checkDateChange, 1000);
-
-// No iPhone/Safari, o app pode ser suspenso em segundo plano.
-// Ao voltar para a tela, verificamos novamente a data.
-document.addEventListener('visibilitychange', () => {
-  if(!document.hidden){
-    checkDateChange();
-  }
-});
 
 /* ============ RENDER ============ */
 function render(){
