@@ -497,6 +497,7 @@
       </div>
 
       <button class="save-btn" id="btn-save">Salvar no histórico</button>
+      <div class="toast" id="toast">Salvo ✓</div>
     </div>
 
     <div class="history">
@@ -787,15 +788,13 @@ saveBtn.addEventListener('click', async () => {
   saveBtn.disabled = true;
   const ok = await persist();
   saveBtn.disabled = false;
-  if(ok){
+    if(ok){
     toast.classList.add('show');
-    saveBtn.classList.add('saved');
-    saveBtn.textContent = 'Salvo ✓';
+
     setTimeout(() => {
       toast.classList.remove('show');
-      saveBtn.classList.remove('saved');
-      saveBtn.textContent = 'Salvar no histórico';
     }, 1400);
+
     renderLog();
   } else {
     toast.textContent = 'Erro ao salvar. Verifique a internet.';
