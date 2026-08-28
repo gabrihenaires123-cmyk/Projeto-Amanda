@@ -160,8 +160,19 @@
   }
   .save-btn:active{ transform: scale(0.98); }
   .save-btn.saved{ background: var(--teal-deep); }
-  .save-btn.error{ background: var(--error); }
   .save-btn:disabled{ opacity: 0.6; cursor: default; }
+
+  .toast{
+    text-align:center;
+    font-size: 13px;
+    color: var(--teal);
+    font-weight:700;
+    height: 18px;
+    margin-top: 10px;
+    opacity:0;
+    transition: opacity 0.25s ease;
+  }
+  .toast.show{ opacity:1; }
 
   .history{
     margin-top: 30px;
@@ -324,8 +335,6 @@
 
   .sheet .log{
     overflow-y: auto;
-    flex: 1;
-    min-height: 0;
   }
 
   /* ---- Auth screen ---- */
@@ -397,13 +406,12 @@
   }
 
   .top-bar{
-    position: relative;
-    text-align: center;
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
   }
   .logout-btn{
-    position: absolute;
-    top: 2px;
-    right: 0;
     background: none;
     border: none;
     color: var(--ink-soft);
@@ -462,10 +470,10 @@
   <!-- App principal -->
   <div id="main-screen" class="hidden">
     <div class="top-bar">
+      <div class="eyebrow" style="margin-bottom:0;">feito para a Amanda</div>
       <button class="logout-btn" id="btn-logout">sair</button>
-      <div class="eyebrow">feito para a Amanda</div>
-      <h1>Contagem diária de exercícios</h1>
     </div>
+    <h1>Contagem diária de exercícios</h1>
 
     <div class="card">
       <div class="date-row"><span id="today-label">—</span></div>
@@ -486,6 +494,7 @@
       </div>
 
       <button class="save-btn" id="btn-save">Salvar no histórico</button>
+      <div class="toast" id="toast">Salvo ✓</div>
     </div>
 
     <div class="history">
@@ -528,9 +537,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-// Garante que o login fique salvo no dispositivo (não pede login de novo)
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-  .catch((e) => console.error('Erro ao configurar persistência do login:', e));
 
 /* ============ HELPERS DE DATA ============ */
 function todayISO(){
@@ -554,11 +560,10 @@ function weekdayLetter(iso){
 
 /* ============ ESTADO ============ */
 let history = {}; // { 'YYYY-MM-DD': count }
-let today = todayISO();
+const today = todayISO();
 let current = 0;
 let currentUser = null;
 let isSignUpMode = false;
-let authResolved = false;
 
 /* ============ ELEMENTOS ============ */
 const loadingScreen = document.getElementById('loading-screen');
@@ -568,6 +573,7 @@ const mainScreen = document.getElementById('main-screen');
 const countEl = document.getElementById('count');
 const todayLabel = document.getElementById('today-label');
 const saveBtn = document.getElementById('btn-save');
+const toast = document.getElementById('toast');
 const weekEl = document.getElementById('week');
 const logEl = document.getElementById('log');
 const btnUp = document.getElementById('btn-up');
@@ -664,7 +670,6 @@ btnLogout.addEventListener('click', () => {
 });
 
 auth.onAuthStateChanged(async (user) => {
-  authResolved = true;
   if(user){
     currentUser = user;
     await loadHistory();
@@ -754,21 +759,6 @@ function renderLog(){
   `).join('');
 }
 
-/* ============ TROCA AUTOMÁTICA DE DIA ============ */
-function checkDateChange(){
-  const now = todayISO();
-  if(now !== today){
-    today = now;
-    todayLabel.textContent = fmtLong(today);
-    current = history[today] || 0;
-    render();
-  }
-}
-setInterval(checkDateChange, 60000); // checa a cada 1 minuto
-document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'visible') checkDateChange();
-});
-
 /* ============ EVENTOS DO APP ============ */
 btnUp.addEventListener('click', () => {
   current += 1;
@@ -787,21 +777,24 @@ saveBtn.addEventListener('click', async () => {
   saveBtn.disabled = true;
   const ok = await persist();
   saveBtn.disabled = false;
-
   if(ok){
+    toast.classList.add('show');
     saveBtn.classList.add('saved');
     saveBtn.textContent = 'Salvo ✓';
-    renderLog();
     setTimeout(() => {
+      toast.classList.remove('show');
       saveBtn.classList.remove('saved');
       saveBtn.textContent = 'Salvar no histórico';
     }, 1400);
+    renderLog();
   } else {
-    saveBtn.classList.add('error');
-    saveBtn.textContent = 'Erro. Tente de novo';
+    toast.textContent = 'Erro ao salvar. Verifique a internet.';
+    toast.style.color = 'var(--error)';
+    toast.classList.add('show');
     setTimeout(() => {
-      saveBtn.classList.remove('error');
-      saveBtn.textContent = 'Salvar no histórico';
+      toast.classList.remove('show');
+      toast.style.color = '';
+      toast.textContent = 'Salvo ✓';
     }, 2200);
   }
 });
@@ -820,10 +813,6 @@ sheetOverlay.addEventListener('click', (e) => {
 /* ============ INÍCIO ============ */
 updateAuthModeUI();
 showScreen('loading');
-// Segurança: se em 4s o Firebase não respondeu, mostra o login de qualquer jeito
-setTimeout(() => {
-  if(!authResolved) showScreen('auth');
-}, 4000);
 </script>
 
 </body>
