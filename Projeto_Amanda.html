@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Contagem diária de exercícios</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg-top: #fdf1f6;
+    --bg-bottom: #fbdfec;
+    --ink: #3c2530;
+    --ink-soft: #9a7684;
+    --teal: #d1567e;
+    --teal-deep: #a53a60;
+    --coral: #e0729b;
+    --coral-soft: #fdeaf1;
+    --paper: #fffbfc;
+    --line: #f6dfe8;
+    --error: #c0392b;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+    font-family: 'Manrope', sans-serif;
+    color: var(--ink);
+    display:flex;
+    justify-content:center;
+    padding: 28px 16px 60px;
+  }
+
+  .app{
+    width:100%;
+    max-width: 380px;
+  }
+
+  .eyebrow{
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--teal);
+    font-weight: 700;
+    text-align:center;
+    margin-bottom: 4px;
+  }
+
+  h1{
+    font-size: 22px;
+    text-align:center;
+    margin: 0 0 24px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .card{
+    background: var(--paper);
+    border-radius: 28px;
+    padding: 28px 22px 22px;
+    box-shadow: 0 18px 40px -20px rgba(20,73,61,0.35), 0 2px 8px rgba(20,73,61,0.06);
+    position: relative;
+    overflow:hidden;
+  }
+
+  .card::before{
+    content:"";
+    position:absolute;
+    top:-60px; right:-60px;
+    width:160px; height:160px;
+    background: radial-gradient(circle, rgba(31,111,92,0.10), transparent 70%);
+  }
+
+  .date-row{
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin-bottom: 22px;
+    font-weight: 600;
+  }
+  .date-row span{ text-transform:capitalize; }
+
+  .stepper{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 4px;
+  }
+
+  .arrow-btn{
+    width: 84px;
+    height: 56px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+    touch-action: manipulation;
+  }
+
+  .arrow-btn svg{ transition: transform 0.12s ease; }
+  .arrow-btn:active svg{ transform: scale(0.82); }
+
+  .arrow-up svg polygon{ fill: var(--teal); }
+  .arrow-down svg polygon{ fill: var(--coral); }
+
+  .arrow-btn:disabled{ opacity: 0.25; pointer-events:none; }
+
+  .dial{
+    width: 172px;
+    height: 172px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #f4faf7, #ffffff);
+    border: 1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    margin: 2px 0;
+    box-shadow: inset 0 2px 10px rgba(20,73,61,0.06);
+  }
+
+  .count{
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+    font-size: 58px;
+    color: var(--teal-deep);
+    line-height:1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .count-label{
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 6px;
+    font-weight:700;
+  }
+
+  .save-btn{
+    width:100%;
+    margin-top: 22px;
+    padding: 15px;
+    border: none;
+    border-radius: 16px;
+    background: var(--teal);
+    color: #fff;
+    font-family:'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+    cursor:pointer;
+    transition: transform 0.08s ease, background 0.2s ease;
+  }
+  .save-btn:active{ transform: scale(0.98); }
+  .save-btn.saved{ background: var(--teal-deep); }
+  .save-btn:disabled{ opacity: 0.6; cursor: default; }
+
+  .toast{
+    text-align:center;
+    font-size: 13px;
+    color: var(--teal);
+    font-weight:700;
+    height: 18px;
+    margin-top: 10px;
+    opacity:0;
+    transition: opacity 0.25s ease;
+  }
+  .toast.show{ opacity:1; }
+
+  .history{
+    margin-top: 30px;
+  }
+
+  .history-title{
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 12px 4px;
+  }
+
+  .week{
+    display:flex;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  .day-pill{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+  }
+  .day-pill .bar-track{
+    width:100%;
+    height:64px;
+    background: var(--paper);
+    border-radius: 10px;
+    display:flex;
+    align-items:flex-end;
+    overflow:hidden;
+    border: 1px solid var(--line);
+  }
+  .day-pill .bar{
+    width:100%;
+    background: linear-gradient(180deg, var(--teal), var(--teal-deep));
+    border-radius: 10px 10px 0 0;
+    transition: height 0.4s ease;
+  }
+  .day-pill .lbl{
+    font-size: 10px;
+    color: var(--ink-soft);
+    font-weight:700;
+    text-transform:uppercase;
+  }
+  .day-pill.today .lbl{ color: var(--teal); }
+
+  .log{
+    display:flex;
+    flex-direction:column;
+    gap: 2px;
+    border-radius: 16px;
+    overflow:hidden;
+    background: var(--paper);
+    border: 1px solid var(--line);
+  }
+  .log-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding: 12px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .log-row:last-child{ border-bottom:none; }
+  .log-date{ color: var(--ink); font-weight:600; }
+  .log-count{
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+    color: var(--teal);
+    background: var(--coral-soft);
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 13px;
+  }
+  .empty{
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 13px;
+    padding: 22px 10px;
+  }
+
+  .history-btn{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--paper);
+    color: var(--teal-deep);
+    font-family:'Manrope', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor:pointer;
+    transition: transform 0.08s ease, background 0.15s ease;
+  }
+  .history-btn:active{ transform: scale(0.98); background: #f3f8f5; }
+  .history-btn svg{ transform: rotate(90deg); }
+
+  .sheet-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(20,73,61,0.45);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 10;
+    padding: 24px 16px;
+  }
+  .sheet-overlay.open{ opacity:1; pointer-events:auto; }
+
+  .sheet{
+    width:100%;
+    max-width: 360px;
+    max-height: 78vh;
+    background: var(--bg-bottom);
+    border-radius: 26px;
+    padding: 22px 18px 20px;
+    display:flex;
+    flex-direction:column;
+    transform: scale(0.9);
+    opacity: 0;
+    transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease;
+    box-shadow: 0 24px 60px rgba(20,73,61,0.35);
+  }
+  .sheet-overlay.open .sheet{ transform: scale(1); opacity: 1; }
+
+  .sheet-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-weight: 800;
+    font-size: 17px;
+    margin-bottom: 16px;
+    padding: 0 2px;
+  }
+
+  .sheet-close{
+    border:none;
+    background: var(--paper);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: var(--ink-soft);
+    font-size: 14px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .sheet .log{
+    overflow-y: auto;
+  }
+
+  /* ---- Auth screen ---- */
+  .auth-card{
+    background: var(--paper);
+    border-radius: 28px;
+    padding: 30px 24px;
+    box-shadow: 0 18px 40px -20px rgba(20,73,61,0.35), 0 2px 8px rgba(20,73,61,0.06);
+  }
+  .auth-title{
+    font-size: 17px;
+    font-weight: 800;
+    text-align: center;
+    margin: 0 0 4px;
+  }
+  .auth-sub{
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-align: center;
+    margin: 0 0 20px;
+  }
+  .field{
+    margin-bottom: 12px;
+  }
+  .field label{
+    display:block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    padding-left: 2px;
+  }
+  .field input{
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: #fff;
+    font-family: 'Manrope', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    outline: none;
+  }
+  .field input:focus{ border-color: var(--teal); }
+
+  .auth-error{
+    font-size: 13px;
+    color: var(--error);
+    text-align: center;
+    margin: 4px 0 8px;
+    min-height: 16px;
+  }
+
+  .auth-toggle{
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 16px;
+  }
+  .auth-toggle button{
+    background: none;
+    border: none;
+    color: var(--teal);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0;
+    text-decoration: underline;
+  }
+
+  .top-bar{
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .logout-btn{
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .hidden{ display:none !important; }
+
+  .loading-screen{
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 14px;
+    padding: 60px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Tela de carregamento -->
+  <div id="loading-screen" class="loading-screen">Carregando…</div>
+
+  <!-- Tela de login / cadastro -->
+  <div id="auth-screen" class="hidden">
+    <div class="eyebrow">feito para a Amanda</div>
+    <h1>Contagem diária de exercícios</h1>
+
+    <div class="auth-card">
+      <div class="auth-title" id="auth-title">Entrar</div>
+      <div class="auth-sub" id="auth-sub">Entre com seu e-mail e senha</div>
+
+      <div class="field">
+        <label for="auth-email">E-mail</label>
+        <input type="email" id="auth-email" autocomplete="email" placeholder="voce@exemplo.com" />
+      </div>
+      <div class="field">
+        <label for="auth-password">Senha</label>
+        <input type="password" id="auth-password" autocomplete="current-password" placeholder="••••••••" />
+      </div>
+
+      <div class="auth-error" id="auth-error"></div>
+
+      <button class="save-btn" id="auth-submit">Entrar</button>
+
+      <div class="auth-toggle">
+        <span id="auth-toggle-text">Ainda não tem conta?</span>
+        <button id="auth-toggle-btn">Criar conta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App principal -->
+  <div id="main-screen" class="hidden">
+    <div class="top-bar">
+      <div class="eyebrow" style="margin-bottom:0;">feito para a Amanda</div>
+      <button class="logout-btn" id="btn-logout">sair</button>
+    </div>
+    <h1>Contagem diária de exercícios</h1>
+
+    <div class="card">
+      <div class="date-row"><span id="today-label">—</span></div>
+
+      <div class="stepper">
+        <button class="arrow-btn arrow-up" id="btn-up" aria-label="Aumentar">
+          <svg width="40" height="26" viewBox="0 0 40 26"><polygon points="20,0 40,26 0,26"/></svg>
+        </button>
+
+        <div class="dial">
+          <div class="count" id="count">0</div>
+          <div class="count-label">exercícios hoje</div>
+        </div>
+
+        <button class="arrow-btn arrow-down" id="btn-down" aria-label="Diminuir">
+          <svg width="40" height="26" viewBox="0 0 40 26"><polygon points="0,0 40,0 20,26"/></svg>
+        </button>
+      </div>
+
+      <button class="save-btn" id="btn-save">Salvar no histórico</button>
+      <div class="toast" id="toast">Salvo ✓</div>
+    </div>
+
+    <div class="history">
+      <div class="history-title">Últimos 7 dias</div>
+      <div class="week" id="week"></div>
+
+      <button class="history-btn" id="btn-history">
+        <span>Ver histórico completo</span>
+        <svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="sheet-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <span>Histórico completo</span>
+      <button class="sheet-close" id="sheet-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<!-- Firebase (compat SDK, sem necessidade de build) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+/* ============ CONFIGURAÇÃO FIREBASE ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyAIoidklDsoLv2kzB1FXhdMVnLk2L5IYV4",
+  authDomain: "exercicios-amanda.firebaseapp.com",
+  projectId: "exercicios-amanda",
+  storageBucket: "exercicios-amanda.firebasestorage.app",
+  messagingSenderId: "661872490589",
+  appId: "1:661872490589:web:ce4ce37b07cef8870b75b4"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* ============ HELPERS DE DATA ============ */
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function fmtLong(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  return date.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' });
+}
+function fmtShort(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0');
+}
+function weekdayLetter(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  return date.toLocaleDateString('pt-BR', { weekday:'short' }).replace('.','').slice(0,3);
+}
+
+/* ============ ESTADO ============ */
+let history = {}; // { 'YYYY-MM-DD': count }
+const today = todayISO();
+let current = 0;
+let currentUser = null;
+let isSignUpMode = false;
+
+/* ============ ELEMENTOS ============ */
+const loadingScreen = document.getElementById('loading-screen');
+const authScreen = document.getElementById('auth-screen');
+const mainScreen = document.getElementById('main-screen');
+
+const countEl = document.getElementById('count');
+const todayLabel = document.getElementById('today-label');
+const saveBtn = document.getElementById('btn-save');
+const toast = document.getElementById('toast');
+const weekEl = document.getElementById('week');
+const logEl = document.getElementById('log');
+const btnUp = document.getElementById('btn-up');
+const btnDown = document.getElementById('btn-down');
+const btnHistory = document.getElementById('btn-history');
+const sheetOverlay = document.getElementById('sheet-overlay');
+const sheetClose = document.getElementById('sheet-close');
+const btnLogout = document.getElementById('btn-logout');
+
+const authTitle = document.getElementById('auth-title');
+const authSub = document.getElementById('auth-sub');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const authError = document.getElementById('auth-error');
+const authSubmit = document.getElementById('auth-submit');
+const authToggleText = document.getElementById('auth-toggle-text');
+const authToggleBtn = document.getElementById('auth-toggle-btn');
+
+todayLabel.textContent = fmtLong(today);
+
+/* ============ AUTENTICAÇÃO ============ */
+function showScreen(name){
+  loadingScreen.classList.toggle('hidden', name !== 'loading');
+  authScreen.classList.toggle('hidden', name !== 'auth');
+  mainScreen.classList.toggle('hidden', name !== 'main');
+}
+
+function updateAuthModeUI(){
+  if(isSignUpMode){
+    authTitle.textContent = 'Criar conta';
+    authSub.textContent = 'Crie sua conta para começar a salvar';
+    authSubmit.textContent = 'Criar conta';
+    authToggleText.textContent = 'Já tem conta?';
+    authToggleBtn.textContent = 'Entrar';
+  } else {
+    authTitle.textContent = 'Entrar';
+    authSub.textContent = 'Entre com seu e-mail e senha';
+    authSubmit.textContent = 'Entrar';
+    authToggleText.textContent = 'Ainda não tem conta?';
+    authToggleBtn.textContent = 'Criar conta';
+  }
+  authError.textContent = '';
+}
+
+authToggleBtn.addEventListener('click', () => {
+  isSignUpMode = !isSignUpMode;
+  updateAuthModeUI();
+});
+
+function friendlyAuthError(code){
+  const map = {
+    'auth/invalid-email': 'E-mail inválido.',
+    'auth/missing-password': 'Digite uma senha.',
+    'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+    'auth/email-already-in-use': 'Esse e-mail já tem uma conta. Tente entrar.',
+    'auth/invalid-credential': 'E-mail ou senha incorretos.',
+    'auth/wrong-password': 'E-mail ou senha incorretos.',
+    'auth/user-not-found': 'Não existe conta com esse e-mail.',
+    'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco.'
+  };
+  return map[code] || 'Algo deu errado. Tente de novo.';
+}
+
+authSubmit.addEventListener('click', async () => {
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+  authError.textContent = '';
+
+  if(!email || !password){
+    authError.textContent = 'Preencha e-mail e senha.';
+    return;
+  }
+
+  authSubmit.disabled = true;
+  authSubmit.textContent = isSignUpMode ? 'Criando…' : 'Entrando…';
+
+  try{
+    if(isSignUpMode){
+      await auth.createUserWithEmailAndPassword(email, password);
+    } else {
+      await auth.signInWithEmailAndPassword(email, password);
+    }
+    // onAuthStateChanged cuida do resto
+  }catch(e){
+    authError.textContent = friendlyAuthError(e.code);
+  } finally {
+    authSubmit.disabled = false;
+    updateAuthModeUI();
+  }
+});
+
+btnLogout.addEventListener('click', () => {
+  auth.signOut();
+});
+
+auth.onAuthStateChanged(async (user) => {
+  if(user){
+    currentUser = user;
+    await loadHistory();
+    showScreen('main');
+  } else {
+    currentUser = null;
+    history = {};
+    current = 0;
+    authEmail.value = '';
+    authPassword.value = '';
+    updateAuthModeUI();
+    showScreen('auth');
+  }
+});
+
+/* ============ FIRESTORE ============ */
+function userDocRef(){
+  return db.collection('users').doc(currentUser.uid);
+}
+
+async function loadHistory(){
+  try{
+    const doc = await userDocRef().get();
+    history = (doc.exists && doc.data().history) ? doc.data().history : {};
+  }catch(e){
+    console.error('Erro ao carregar histórico', e);
+    history = {};
+  }
+  current = history[today] || 0;
+  render();
+}
+
+async function persist(){
+  try{
+    await userDocRef().set({ history }, { merge: true });
+    return true;
+  }catch(e){
+    console.error('Erro ao salvar', e);
+    return false;
+  }
+}
+
+/* ============ RENDER ============ */
+function render(){
+  countEl.textContent = current;
+  btnDown.disabled = current <= 0;
+  renderWeek();
+  renderLog();
+}
+
+function renderWeek(){
+  weekEl.innerHTML = '';
+  const days = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    days.push(iso);
+  }
+  const values = days.map(iso => iso === today ? current : (history[iso]||0));
+  const max = Math.max(1, ...values);
+
+  days.forEach((iso, idx) => {
+    const val = values[idx];
+    const pct = Math.round((val/max)*100);
+    const pill = document.createElement('div');
+    pill.className = 'day-pill' + (iso === today ? ' today' : '');
+    pill.innerHTML = `
+      <div class="bar-track"><div class="bar" style="height:${val>0 ? Math.max(pct,8) : 0}%"></div></div>
+      <div class="lbl">${weekdayLetter(iso)}</div>
+    `;
+    weekEl.appendChild(pill);
+  });
+}
+
+function renderLog(){
+  const entries = Object.entries(history).sort((a,b)=> b[0].localeCompare(a[0]));
+  if(entries.length === 0){
+    logEl.innerHTML = '<div class="empty">Nenhum dia salvo ainda. Registre hoje!</div>';
+    return;
+  }
+  logEl.innerHTML = entries.map(([iso, val]) => `
+    <div class="log-row">
+      <span class="log-date">${fmtShort(iso)}${iso===today ? ' · hoje' : ''}</span>
+      <span class="log-count">${val}</span>
+    </div>
+  `).join('');
+}
+
+/* ============ EVENTOS DO APP ============ */
+btnUp.addEventListener('click', () => {
+  current += 1;
+  render();
+});
+
+btnDown.addEventListener('click', () => {
+  if(current > 0){
+    current -= 1;
+    render();
+  }
+});
+
+saveBtn.addEventListener('click', async () => {
+  history[today] = current;
+  saveBtn.disabled = true;
+  const ok = await persist();
+  saveBtn.disabled = false;
+  if(ok){
+    toast.classList.add('show');
+    saveBtn.classList.add('saved');
+    saveBtn.textContent = 'Salvo ✓';
+    setTimeout(() => {
+      toast.classList.remove('show');
+      saveBtn.classList.remove('saved');
+      saveBtn.textContent = 'Salvar no histórico';
+    }, 1400);
+    renderLog();
+  } else {
+    toast.textContent = 'Erro ao salvar. Verifique a internet.';
+    toast.style.color = 'var(--error)';
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      toast.style.color = '';
+      toast.textContent = 'Salvo ✓';
+    }, 2200);
+  }
+});
+
+btnHistory.addEventListener('click', () => {
+  renderLog();
+  sheetOverlay.classList.add('open');
+});
+sheetClose.addEventListener('click', () => {
+  sheetOverlay.classList.remove('open');
+});
+sheetOverlay.addEventListener('click', (e) => {
+  if(e.target === sheetOverlay) sheetOverlay.classList.remove('open');
+});
+
+/* ============ INÍCIO ============ */
+updateAuthModeUI();
+showScreen('loading');
+</script>
+
+</body>
+</html>
